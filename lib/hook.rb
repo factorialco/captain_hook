@@ -67,6 +67,10 @@ module Hook
       after_hooks.push(HookConfiguration.new(hook: hook, method: method))
     end
 
+    def around(method, hook)
+      around_hooks.push(HookConfiguration.new(hook: hook, method: method))
+    end
+
     ####
     # Decorator pattern logic part
     ####
