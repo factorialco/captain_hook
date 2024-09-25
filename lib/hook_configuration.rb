@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class HookConfiguration
-  def initialize(hook:, method:)
+  def initialize(hook:, method: nil)
     @hook = hook
     @method = method
   end

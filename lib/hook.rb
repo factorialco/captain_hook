@@ -16,6 +16,8 @@ module Hook
 
   def run_around_hooks(method, *args, **kwargs, &block)
     self.class.around_hooks.reverse.inject(block) do |chain, hook_configuration|
+      next proc { run_hook(hook_configuration, chain, *args, **kwargs) } if hook_configuration.method.nil?
+
       next chain unless hook_configuration.method == method
 
       proc { run_hook(hook_configuration, chain, args, kwargs) }
@@ -32,6 +34,7 @@ module Hook
 
   def run_hooks(method, hooks, *args, **kwargs)
     hooks.each do |hook_configuration|
+      run_hook(hook_configuration, [], *args, **kwargs) if hook_configuration.method.nil?
       next unless hook_configuration.method == method
 
       run_hook(hook_configuration, [], *args, **kwargs)
@@ -59,15 +62,15 @@ module Hook
       @around_hooks ||= []
     end
 
-    def before(method, hook)
+    def before(hook:, method: nil)
       before_hooks.push(HookConfiguration.new(hook: hook, method: method))
     end
 
-    def after(method, hook)
+    def after(hook:, method: nil)
       after_hooks.push(HookConfiguration.new(hook: hook, method: method))
     end
 
-    def around(method, hook)
+    def around(hook:, method: nil)
       around_hooks.push(HookConfiguration.new(hook: hook, method: method))
     end
 

@@ -15,15 +15,21 @@ class ServeHook
   def call(verb); end
 end
 
+class BeforeAllHook
+  def call(foo, bar); end
+end
+
 class ResourceWithHooks
   include Hook
 
-  before :cook, CookHook.new
+  before method: :cook, hook: CookHook.new
 
-  after :prepare, PrepareHook.new
-  after :invented_one, PrepareHook.new
+  after method: :prepare, hook: PrepareHook.new
+  after method: :invented_one, hook: PrepareHook.new
 
-  around :serve, ServeHook.new
+  around method: :serve, hook: ServeHook.new
+
+  before hook: BeforeAllHook.new
 
   def prepare(foo)
     puts "preparing #{foo}"
@@ -43,6 +49,7 @@ describe Hook do
 
   it do
     expect_any_instance_of(CookHook).to receive(:call).once
+    expect_any_instance_of(BeforeAllHook).to receive(:call).once
 
     subject.cook
   end
@@ -51,6 +58,7 @@ describe Hook do
     it do
       expect_any_instance_of(CookHook).not_to receive(:call)
       expect_any_instance_of(PrepareHook).to receive(:call)
+      expect_any_instance_of(BeforeAllHook).to receive(:call).once
 
       subject.prepare('bar')
     end
@@ -66,6 +74,8 @@ describe Hook do
   context 'around callback' do
     it do
       expect_any_instance_of(ServeHook).to receive(:call).once
+      # TODO: Review this one
+      # expect_any_instance_of(BeforeAllHook).to receive(:call).once
       subject.serve
     end
   end
