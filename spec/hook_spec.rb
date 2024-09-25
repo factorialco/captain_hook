@@ -7,15 +7,19 @@ class HookSpy
   def call(verb); end
 end
 
+class HookSpy2
+  def call(foo, bar); end
+end
+
 class ResourceWithHooks
   include Hook
 
   before :cook, HookSpy.new
 
-  # hook :after, :serve, only: :cook, ServeHook.new(some_param: 'foo')
+  after :prepare, HookSpy2.new
 
-  def prepare
-    puts 'preparing'
+  def prepare(foo)
+    puts "preparing #{foo}"
   end
 
   def cook
@@ -36,7 +40,7 @@ describe Hook do
     it do
       expect_any_instance_of(HookSpy).not_to receive(:call)
 
-      subject.prepare
+      subject.prepare('bar')
     end
   end
 end

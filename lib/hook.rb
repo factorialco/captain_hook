@@ -63,6 +63,10 @@ module Hook
       before_hooks.push(HookConfiguration.new(hook: hook, method: method))
     end
 
+    def after(method, hook)
+      after_hooks.push(HookConfiguration.new(hook: hook, method: method))
+    end
+
     ####
     # Decorator pattern logic part
     ####
@@ -71,7 +75,8 @@ module Hook
     end
 
     def method_added(method_name)
-      if !public_method_defined?(method_name) || overriden?(method_name) || method_name.end_with?('__without_hooks')
+      if !public_method_defined?(method_name) || overriden?(method_name) ||
+         method_name.to_s.end_with?('__without_hooks')
         return super(method_name)
       end
 
@@ -100,7 +105,19 @@ module Hook
       define_method(method_name) do |*args, **kwargs|
         run_around_hooks(method_name, *args, **kwargs) do
           run_before_hooks(method_name, *args, **kwargs)
-          send(original_method_name, *args, **kwargs)
+
+          # Supporting any kind of method, without arguments, with positional
+          # or with named parameters. Or any combination of them.
+          if kwargs.any? && args.any?
+            send(original_method_name, *args, **kwargs)
+          elsif kwargs.any?
+            send(original_method_name, **kwargs)
+          elsif args.any?
+            send(original_method_name, *args)
+          else
+            send(original_method_name)
+          end
+
           run_after_hooks(method_name, *args, **kwargs)
         end
       end
