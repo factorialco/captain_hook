@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
-require 'pry'
-require_relative '../lib/hook'
+require "pry"
 
 class CookHook
   def call(verb); end
@@ -36,11 +35,11 @@ class ResourceWithHooks
   end
 
   def cook
-    puts 'cooking'
+    puts "cooking"
   end
 
   def serve
-    puts 'servig food'
+    puts "servig food"
   end
 end
 
@@ -54,24 +53,24 @@ describe Hook do
     subject.cook
   end
 
-  context 'when the method is not defined in the hook' do
+  context "when the method is not defined in the hook" do
     it do
       expect_any_instance_of(CookHook).not_to receive(:call)
       expect_any_instance_of(PrepareHook).to receive(:call)
       expect_any_instance_of(BeforeAllHook).to receive(:call).once
 
-      subject.prepare('bar')
+      subject.prepare("bar")
     end
   end
 
-  context 'when method doesnt exist' do
+  context "when method doesnt exist" do
     it do
       expect { subject.invented_one }.to raise_error(NoMethodError)
       expect_any_instance_of(PrepareHook).not_to receive(:call)
     end
   end
 
-  context 'around callback' do
+  context "around callback" do
     it do
       expect_any_instance_of(ServeHook).to receive(:call).once
       # TODO: Review this one

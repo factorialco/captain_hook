@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative './hook_configuration'
+require_relative "./hook_configuration"
 
 # Strong inspiration on https://github.com/collectiveidea/interactor/blob/master/lib/interactor/hooks.rb
 #
@@ -83,7 +83,7 @@ module Hook
 
     def method_added(method_name)
       if !public_method_defined?(method_name) || overriden?(method_name) ||
-         method_name.to_s.end_with?('__without_hooks')
+         method_name.to_s.end_with?("__without_hooks")
         return super(method_name)
       end
 
