@@ -115,17 +115,19 @@ module Hook
 
           # Supporting any kind of method, without arguments, with positional
           # or with named parameters. Or any combination of them.
-          if kwargs.any? && args.any?
-            send(original_method_name, *args, **kwargs)
-          elsif kwargs.any?
-            send(original_method_name, **kwargs)
-          elsif args.any?
-            send(original_method_name, *args)
-          else
-            send(original_method_name)
-          end
+          result = if kwargs.any? && args.any?
+                     send(original_method_name, *args, **kwargs)
+                   elsif kwargs.any?
+                     send(original_method_name, **kwargs)
+                   elsif args.any?
+                     send(original_method_name, *args)
+                   else
+                     send(original_method_name)
+                   end
 
           run_after_hooks(method_name, *args, **kwargs)
+
+          result
         end
       end
     end

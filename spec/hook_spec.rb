@@ -32,6 +32,8 @@ class ResourceWithHooks
 
   def prepare(foo)
     puts "preparing #{foo}"
+
+    "preparing #{foo}"
   end
 
   def cook
@@ -59,7 +61,7 @@ describe Hook do
       expect_any_instance_of(PrepareHook).to receive(:call)
       expect_any_instance_of(BeforeAllHook).to receive(:call).once
 
-      subject.prepare("bar")
+      expect(subject.prepare("bar")).to eq("preparing bar")
     end
   end
 
