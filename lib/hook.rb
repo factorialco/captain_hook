@@ -11,6 +11,13 @@ module Hook
   def self.included(base)
     base.class_eval do
       extend ClassMethods
+
+      def self.inherited(subclass)
+        super
+        subclass.class_eval do
+          extend ClassMethods
+        end
+      end
     end
   end
 
@@ -64,14 +71,24 @@ module Hook
     end
 
     def get_hooks(kind)
+      ancestor_before_hooks = ancestors.map do |a|
+        a.respond_to?(:before_hooks) ? a.before_hooks : []
+      end.flatten
+      ancestor_after_hooks = ancestors.map do |a|
+        a.respond_to?(:after_hooks) ? a.after_hooks : []
+      end.flatten
+      ancestor_around_hooks = ancestors.map do |a|
+        a.respond_to?(:around_hooks) ? a.around_hooks : []
+      end.flatten
+
       case kind
       when :before
-        before_hooks
+        before_hooks + ancestor_before_hooks
       when :after
-        after_hooks
+        after_hooks + ancestor_after_hooks
       when :around
-        around_hooks
-      end
+        around_hooks + ancestor_around_hooks
+      end.flatten
     end
 
     def after_hooks

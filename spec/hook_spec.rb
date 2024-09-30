@@ -70,27 +70,27 @@ describe Hook do
   it do
     expect_any_instance_of(CookHook).to receive(:call).once
     expect_any_instance_of(BeforeAllHook).to receive(:call).once
-
+ 
     subject.cook
   end
-
+ 
   context "when the method is not defined in the hook" do
     it do
       expect_any_instance_of(CookHook).not_to receive(:call)
       expect_any_instance_of(PrepareHook).to receive(:call)
       expect_any_instance_of(BeforeAllHook).to receive(:call).once
-
+ 
       expect(subject.prepare("bar")).to eq("preparing bar")
     end
   end
-
+ 
   context "when method doesnt exist" do
     it do
       expect { subject.invented_one }.to raise_error(NoMethodError)
       expect_any_instance_of(PrepareHook).not_to receive(:call)
     end
   end
-
+ 
   context "around callback" do
     it do
       expect_any_instance_of(ServeHook).to receive(:call).once
@@ -99,7 +99,7 @@ describe Hook do
       subject.serve
     end
   end
-
+ 
   context "a hook returns an object which responds to #error?" do
     it do
       expect(subject.deliver).to be_a(CustomError)
@@ -107,11 +107,12 @@ describe Hook do
   end
 
   context "a subclass of a class with hooks should inherit them" do
+    subject { ResourceChildWithHooks.new }
+
     it do
-      expect_any_instance_of(CookHook).to receive(:call).once
       expect_any_instance_of(BeforeAllHook).to receive(:call).once
 
-      ResourceChildWithHooks.new.foo
+      subject.foo
     end
   end
 end
