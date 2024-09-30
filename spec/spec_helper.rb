@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../lib/hook/hook"
+require_relative "../lib/hook"
 
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure

@@ -19,7 +19,7 @@ Gem::Specification.new do |spec|
   spec.metadata["changelog_uri"] = "https://github.com/gtrias/hook"
 
   # Specify which files should be added to the gem when it is released.
-  spec.files = ["lib/hook/hook.rb"]
+  spec.files = ["lib/hook.rb"]
   spec.bindir = "exe"
   spec.executables = spec.files.grep(%r{\Aexe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
