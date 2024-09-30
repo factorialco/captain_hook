@@ -3,7 +3,7 @@
 require "pry"
 
 class CookHook
-  def call(klass, method); end
+  def call(klass, method, policy_context:); end
 end
 
 class PrepareHook
@@ -32,24 +32,18 @@ class ErroringHook
   end
 end
 
-class RealWorldHook
-  def call(repository, _method)
-    puts "RealWorldHook: #{repository}"
-  end
-end
-
 class ResourceWithHooks
   include Hook
 
-  before method: :cook, hook: CookHook.new
-  before method: :deliver, hook: ErroringHook.new
+  hook :before, method: :cook, hook: CookHook.new, inject: [:policy_context]
+  hook :before, method: :deliver, hook: ErroringHook.new
 
-  after method: :prepare, hook: PrepareHook.new
-  after method: :invented_one, hook: PrepareHook.new
+  hook :after, method: :prepare, hook: PrepareHook.new
+  hook :after, method: :invented_one, hook: PrepareHook.new
 
-  around method: :serve, hook: ServeHook.new
+  hook :around, method: :serve, hook: ServeHook.new
 
-  before hook: BeforeAllHook.new
+  hook :before, hook: BeforeAllHook.new
 
   def prepare(foo)
     puts "preparing #{foo}"
@@ -66,6 +60,10 @@ class ResourceWithHooks
   end
 
   def deliver; end
+
+  def policy_context
+    "foo"
+  end
 end
 
 class ResourceChildWithHooks < ResourceWithHooks
@@ -76,7 +74,8 @@ describe Hook do
   subject { ResourceWithHooks.new }
 
   it do
-    expect_any_instance_of(CookHook).to receive(:call).with(subject, :cook).once.and_call_original
+    expect_any_instance_of(CookHook).to receive(:call).with(subject, :cook,
+                                                            { policy_context: "foo" }).once.and_call_original
 
     subject.cook
   end
