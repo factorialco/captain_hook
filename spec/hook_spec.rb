@@ -3,21 +3,21 @@
 require "pry"
 
 class CookHook
-  def call(klass); end
+  def call(klass, method); end
 end
 
 class PrepareHook
-  def call(klass); end
+  def call(klass, method); end
 end
 
 class ServeHook
-  def call(_klass)
+  def call(_klass, _method)
     yield
   end
 end
 
 class BeforeAllHook
-  def call(klass); end
+  def call(klass, method); end
 end
 
 class CustomError
@@ -27,13 +27,13 @@ class CustomError
 end
 
 class ErroringHook
-  def call(_klass)
+  def call(_klass, _method)
     CustomError.new
   end
 end
 
 class RealWorldHook
-  def call(repository)
+  def call(repository, _method)
     puts "RealWorldHook: #{repository}"
   end
 end
@@ -76,7 +76,7 @@ describe Hook do
   subject { ResourceWithHooks.new }
 
   it do
-    expect_any_instance_of(CookHook).to receive(:call).once.and_call_original
+    expect_any_instance_of(CookHook).to receive(:call).with(subject, :cook).once.and_call_original
 
     subject.cook
   end

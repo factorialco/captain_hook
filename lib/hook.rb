@@ -29,7 +29,7 @@ module Hook
   #
   def run_around_hooks(method, *args, **kwargs, &block)
     self.class.get_hooks(:around).to_a.reverse.inject(block) do |chain, hook_configuration|
-      hook_proc = proc { run_hook(hook_configuration, chain, *args, **kwargs) }
+      hook_proc = proc { run_hook(method, hook_configuration, chain, *args, **kwargs) }
       next hook_proc if hook_configuration.method.nil?
 
       next chain unless hook_configuration.method == method
@@ -48,19 +48,19 @@ module Hook
 
   def run_hooks(method, hooks, *args, **kwargs)
     hooks.each do |hook_configuration|
-      body = run_hook(hook_configuration, -> {}, *args, **kwargs) if hook_configuration.method.nil?
+      body = run_hook(method, hook_configuration, -> {}, *args, **kwargs) if hook_configuration.method.nil?
 
       return body if hook_error?(body)
       next unless hook_configuration.method == method
 
-      body = run_hook(hook_configuration, -> {}, *args, **kwargs)
+      body = run_hook(method, hook_configuration, -> {}, *args, **kwargs)
 
       return body if hook_error?(body)
     end
   end
 
-  def run_hook(hook_configuration, chain, *args, **kwargs)
-    hook_configuration.hook.call(self, *args, **kwargs, &chain)
+  def run_hook(method, hook_configuration, chain, *args, **kwargs)
+    hook_configuration.hook.call(self, method, *args, **kwargs, &chain)
   rescue ArgumentError => e
     puts "Argument error running hook: #{hook_configuration.hook.class.name} with method: #{hook_configuration.method}, args: #{args}, kwargs: #{kwargs}"
 
