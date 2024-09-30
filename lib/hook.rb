@@ -21,8 +21,14 @@ module Hook
     end
   end
 
+  # Around hooks are a bit different from before and after hooks, as they
+  # need to be executed in a stack-like way. This method is responsible to
+  #
+  # 1. Reverse the order of the around hooks, so they are executed
+  #   in the right order.
+  #
   def run_around_hooks(method, *args, **kwargs, &block)
-    self.class.get_hooks(:around).reverse.inject(block) do |chain, hook_configuration|
+    self.class.get_hooks(:around).to_a.reverse.inject(block) do |chain, hook_configuration|
       next proc { run_hook(hook_configuration, chain, *args, **kwargs) } if hook_configuration.method.nil?
 
       next chain unless hook_configuration.method == method
@@ -70,25 +76,34 @@ module Hook
       @before_hooks ||= []
     end
 
-    def get_hooks(kind)
-      ancestor_before_hooks = ancestors.map do |a|
-        a.respond_to?(:before_hooks) ? a.before_hooks : []
-      end.flatten
-      ancestor_after_hooks = ancestors.map do |a|
-        a.respond_to?(:after_hooks) ? a.after_hooks : []
-      end.flatten
-      ancestor_around_hooks = ancestors.map do |a|
-        a.respond_to?(:around_hooks) ? a.around_hooks : []
-      end.flatten
+    def hooks
+      { before: before_hooks.to_set, after: after_hooks.to_set, around: around_hooks.to_set }
+    end
 
-      case kind
-      when :before
-        before_hooks + ancestor_before_hooks
-      when :after
-        after_hooks + ancestor_after_hooks
-      when :around
-        around_hooks + ancestor_around_hooks
-      end.flatten
+    def get_ancestor_hooks
+      ancestor_hooks = { before: {}, after: {}, around: {} }
+
+      ancestors.each do |ancestor|
+        next unless ancestor.respond_to?(:get_hooks)
+
+        ancestor.before_hooks.each do |hook|
+          ancestor_hooks[:before][hook.hook.class.name] = hook
+        end
+
+        ancestor.after_hooks.each do |hook|
+          ancestor_hooks[:after][hook.hook.class.name] = hook
+        end
+
+        ancestor.around_hooks.each do |hook|
+          ancestor_hooks[:around][hook.hook.class.name] = hook
+        end
+      end
+
+      ancestor_hooks
+    end
+
+    def get_hooks(kind)
+      (hooks[kind] + get_ancestor_hooks[kind].values).flatten
     end
 
     def after_hooks
