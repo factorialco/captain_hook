@@ -29,11 +29,12 @@ module Hook
   #
   def run_around_hooks(method, *args, **kwargs, &block)
     self.class.get_hooks(:around).to_a.reverse.inject(block) do |chain, hook_configuration|
-      next proc { run_hook(hook_configuration, chain, *args, **kwargs) } if hook_configuration.method.nil?
+      hook_proc = proc { run_hook(hook_configuration, chain, *args, **kwargs) }
+      next hook_proc if hook_configuration.method.nil?
 
       next chain unless hook_configuration.method == method
 
-      proc { run_hook(hook_configuration, chain, args, kwargs) }
+      hook_proc
     end.call
   end
 
@@ -47,19 +48,23 @@ module Hook
 
   def run_hooks(method, hooks, *args, **kwargs)
     hooks.each do |hook_configuration|
-      body = run_hook(hook_configuration, [], *args, **kwargs) if hook_configuration.method.nil?
+      body = run_hook(hook_configuration, -> {}, *args, **kwargs) if hook_configuration.method.nil?
 
       return body if hook_error?(body)
       next unless hook_configuration.method == method
 
-      body = run_hook(hook_configuration, [], *args, **kwargs)
+      body = run_hook(hook_configuration, -> {}, *args, **kwargs)
 
       return body if hook_error?(body)
     end
   end
 
   def run_hook(hook_configuration, chain, *args, **kwargs)
-    hook_configuration.hook.call(chain, *args, **kwargs)
+    hook_configuration.hook.call(self, *args, **kwargs, &chain)
+  rescue ArgumentError => e
+    puts "Argument error running hook: #{hook_configuration.hook.class.name} with method: #{hook_configuration.method}, args: #{args}, kwargs: #{kwargs}"
+
+    raise e
   end
 
   def hook_error?(result)
@@ -72,7 +77,6 @@ module Hook
     # Hooks logic part
     ####
     def before_hooks
-      # self.class.ancestors.map { |a| a.respond_to?(:before_hooks) ? a.before_hooks : [] }
       @before_hooks ||= []
     end
 
@@ -84,17 +88,17 @@ module Hook
       ancestor_hooks = { before: {}, after: {}, around: {} }
 
       ancestors.each do |ancestor|
-        next unless ancestor.respond_to?(:get_hooks)
+        next unless ancestor.respond_to?(:hooks)
 
-        ancestor.before_hooks.each do |hook|
+        ancestor.hooks[:before].each do |hook|
           ancestor_hooks[:before][hook.hook.class.name] = hook
         end
 
-        ancestor.after_hooks.each do |hook|
+        ancestor.hooks[:after].each do |hook|
           ancestor_hooks[:after][hook.hook.class.name] = hook
         end
 
-        ancestor.around_hooks.each do |hook|
+        ancestor.hooks[:around].each do |hook|
           ancestor_hooks[:around][hook.hook.class.name] = hook
         end
       end
@@ -114,6 +118,7 @@ module Hook
       @around_hooks ||= []
     end
 
+    # FIXME: DRY this up
     def before(hook:, method: nil)
       before_hooks.push(HookConfiguration.new(hook: hook, method: method))
     end
@@ -162,27 +167,34 @@ module Hook
 
       # We decorate the method with the before, after and around hooks
       define_method(method_name) do |*args, **kwargs|
-        run_around_hooks(method_name, *args, **kwargs) do
+        around_body = lambda do |*_args, **_kwargs| # FIXME: Review this parameter requirement
           before_hook_result = run_before_hooks(method_name, *args, **kwargs)
 
           return before_hook_result if hook_error?(before_hook_result)
 
           # Supporting any kind of method, without arguments, with positional
           # or with named parameters. Or any combination of them.
-          result = if kwargs.any? && args.any?
-                     send(original_method_name, *args, **kwargs)
-                   elsif kwargs.any?
-                     send(original_method_name, **kwargs)
-                   elsif args.any?
-                     send(original_method_name, *args)
-                   else
+          result = if args.empty? && kwargs.empty?
                      send(original_method_name)
+                   elsif args.empty?
+                     send(original_method_name, **kwargs)
+                   elsif kwargs.empty?
+                     if args.length == 1 && args[0].is_a?(Hash)
+                       send(original_method_name, **args[0])
+                     else
+                       send(original_method_name, *args)
+                     end
+                   else
+                     send(original_method_name, *args, **kwargs)
                    end
 
           run_after_hooks(method_name, *args, **kwargs)
 
           result
         end
+
+        result = run_around_hooks(method_name, *args, **kwargs, &around_body)
+        result
       end
     end
   end

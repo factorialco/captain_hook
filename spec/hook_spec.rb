@@ -2,31 +2,39 @@
 
 require "pry"
 
+class CookHook
+  def call(klass); end
+end
+
+class PrepareHook
+  def call(klass); end
+end
+
+class ServeHook
+  def call(_klass)
+    yield
+  end
+end
+
+class BeforeAllHook
+  def call(klass); end
+end
+
 class CustomError
   def error?
     true
   end
 end
 
-class CookHook
-  def call(verb); end
-end
-
-class PrepareHook
-  def call(foo, bar); end
-end
-
-class ServeHook
-  def call(verb); end
-end
-
-class BeforeAllHook
-  def call(foo, bar); end
-end
-
 class ErroringHook
-  def call(_verb)
+  def call(_klass)
     CustomError.new
+  end
+end
+
+class RealWorldHook
+  def call(repository)
+    puts "RealWorldHook: #{repository}"
   end
 end
 
@@ -54,7 +62,7 @@ class ResourceWithHooks
   end
 
   def serve
-    puts "servig food"
+    "servig food"
   end
 
   def deliver; end
@@ -68,16 +76,15 @@ describe Hook do
   subject { ResourceWithHooks.new }
 
   it do
-    expect_any_instance_of(CookHook).to receive(:call).once
-    expect_any_instance_of(BeforeAllHook).to receive(:call).once
+    expect_any_instance_of(CookHook).to receive(:call).once.and_call_original
 
     subject.cook
   end
 
   context "when the method is not defined in the hook" do
     it do
-      expect_any_instance_of(CookHook).not_to receive(:call)
-      expect_any_instance_of(PrepareHook).to receive(:call)
+      expect_any_instance_of(CookHook).not_to receive(:call).once
+      expect_any_instance_of(PrepareHook).to receive(:call).once
       expect_any_instance_of(BeforeAllHook).to receive(:call).once
 
       expect(subject.prepare("bar")).to eq("preparing bar")
@@ -93,10 +100,10 @@ describe Hook do
 
   context "around callback" do
     it do
-      expect_any_instance_of(ServeHook).to receive(:call).once
-      # TODO: Review this one
-      # expect_any_instance_of(BeforeAllHook).to receive(:call).once
-      subject.serve
+      expect_any_instance_of(ServeHook).to receive(:call).once.and_call_original
+      expect_any_instance_of(BeforeAllHook).to receive(:call).once.and_call_original
+
+      expect(subject.serve).to eq("servig food")
     end
   end
 
