@@ -15,7 +15,7 @@ module Hook
   end
 
   def run_around_hooks(method, *args, **kwargs, &block)
-    self.class.around_hooks.reverse.inject(block) do |chain, hook_configuration|
+    self.class.get_hooks(:around).reverse.inject(block) do |chain, hook_configuration|
       next proc { run_hook(hook_configuration, chain, *args, **kwargs) } if hook_configuration.method.nil?
 
       next chain unless hook_configuration.method == method
@@ -25,24 +25,32 @@ module Hook
   end
 
   def run_before_hooks(method, *args, **kwargs)
-    run_hooks(method, self.class.before_hooks, *args, **kwargs)
+    run_hooks(method, self.class.get_hooks(:before), *args, **kwargs)
   end
 
   def run_after_hooks(method, *args, **kwargs)
-    run_hooks(method, self.class.after_hooks, *args, **kwargs)
+    run_hooks(method, self.class.get_hooks(:after), *args, **kwargs)
   end
 
   def run_hooks(method, hooks, *args, **kwargs)
     hooks.each do |hook_configuration|
-      run_hook(hook_configuration, [], *args, **kwargs) if hook_configuration.method.nil?
+      body = run_hook(hook_configuration, [], *args, **kwargs) if hook_configuration.method.nil?
+
+      return body if hook_error?(body)
       next unless hook_configuration.method == method
 
-      run_hook(hook_configuration, [], *args, **kwargs)
+      body = run_hook(hook_configuration, [], *args, **kwargs)
+
+      return body if hook_error?(body)
     end
   end
 
   def run_hook(hook_configuration, chain, *args, **kwargs)
     hook_configuration.hook.call(chain, *args, **kwargs)
+  end
+
+  def hook_error?(result)
+    result.respond_to?(:error?) && result.error?
   end
 
   # Class methods for the including class.
@@ -51,7 +59,19 @@ module Hook
     # Hooks logic part
     ####
     def before_hooks
+      # self.class.ancestors.map { |a| a.respond_to?(:before_hooks) ? a.before_hooks : [] }
       @before_hooks ||= []
+    end
+
+    def get_hooks(kind)
+      case kind
+      when :before
+        before_hooks
+      when :after
+        after_hooks
+      when :around
+        around_hooks
+      end
     end
 
     def after_hooks
@@ -111,7 +131,9 @@ module Hook
       # We decorate the method with the before, after and around hooks
       define_method(method_name) do |*args, **kwargs|
         run_around_hooks(method_name, *args, **kwargs) do
-          run_before_hooks(method_name, *args, **kwargs)
+          before_hook_result = run_before_hooks(method_name, *args, **kwargs)
+
+          return before_hook_result if hook_error?(before_hook_result)
 
           # Supporting any kind of method, without arguments, with positional
           # or with named parameters. Or any combination of them.
