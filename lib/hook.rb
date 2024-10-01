@@ -30,6 +30,7 @@ module Hook
   def run_around_hooks(method, *args, **kwargs, &block)
     self.class.get_hooks(:around).to_a.reverse.inject(block) do |chain, hook_configuration|
       next chain if hook_configuration.skip_when&.call(args, kwargs)
+      next chain if hook_configuration.exclude.include?(method)
 
       hook_proc = proc { run_hook(method, hook_configuration, chain, *args, **kwargs) }
       next hook_proc if hook_configuration.methods.empty?
