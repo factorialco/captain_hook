@@ -37,18 +37,17 @@ class ResourceWithHooks
 
   hook :before, methods: [:cook], hook: CookHook.new, inject: [:policy_context]
   hook :before, methods: [:deliver], hook: ErroringHook.new
+  hook :before, hook: BeforeAllHook.new, exclude: [:serve], skip_when: ->(_args, kwargs) { !kwargs[:dto] }
 
   hook :after, methods: [:prepare], hook: PrepareHook.new
   hook :after, methods: [:invented_one], hook: PrepareHook.new
 
   hook :around, methods: [:serve], hook: ServeHook.new
 
-  hook :before, hook: BeforeAllHook.new, exclude: [:serve]
+  def prepare(dto:)
+    puts "preparing #{dto}"
 
-  def prepare(foo)
-    puts "preparing #{foo}"
-
-    "preparing #{foo}"
+    "preparing #{dto}"
   end
 
   def cook
@@ -67,7 +66,7 @@ class ResourceWithHooks
 end
 
 class ResourceChildWithHooks < ResourceWithHooks
-  def foo; end
+  def foo(dto:); end
 end
 
 describe Hook do
@@ -88,7 +87,7 @@ describe Hook do
       expect_any_instance_of(PrepareHook).to receive(:call).once
       expect_any_instance_of(BeforeAllHook).to receive(:call).once
 
-      expect(subject.prepare("bar")).to eq("preparing bar")
+      expect(subject.prepare(dto: "bar")).to eq("preparing bar")
     end
   end
 
@@ -120,7 +119,7 @@ describe Hook do
     it do
       expect_any_instance_of(BeforeAllHook).to receive(:call).once
 
-      subject.foo
+      subject.foo(dto: "fooing")
     end
   end
 end

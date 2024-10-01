@@ -41,6 +41,7 @@ module Hook
   def run_hooks(method, hooks, *args, **kwargs)
     hooks.each do |hook_configuration|
       next if hook_configuration.exclude.include?(method)
+      next if hook_configuration.skip_when&.call(args, kwargs)
 
       body = run_hook(method, hook_configuration, -> {}, *args, **kwargs) if hook_configuration.methods.empty?
 
@@ -107,12 +108,25 @@ module Hook
       @hooks ||= { before: {}, after: {}, around: {} }
     end
 
-    def hook(kind, hook:, methods: [], inject: [], exclude: [])
+    # Main hook configuartion entrypoint
+    # Examples:
+    # hook :before, hook: CookHook.new, methods: [:cook], inject: [:policy_context]
+    # hook :before, hook: ErroringHook.new
+    # hook :around, hook: ServeHook.new
+    def hook(
+      kind,
+      hook:,
+      methods: [],
+      inject: [],
+      exclude: [],
+      skip_when: nil
+    )
       hooks[kind][hook] = HookConfiguration.new(
         hook: hook,
         methods: methods,
         inject: inject,
-        exclude: exclude
+        exclude: exclude,
+        skip_when: skip_when
       )
     end
 
