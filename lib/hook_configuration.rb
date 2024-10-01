@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
 class HookConfiguration
-  def initialize(hook:, method: nil, inject: nil, exclude: nil)
+  def initialize(hook:, methods: [], inject: [], exclude: [])
     @hook = hook
-    @method = method
-    @inject = inject || []
-    @exclude = exclude || []
+    @methods = methods
+    @inject = inject
+    @exclude = exclude
   end
 
-  attr_reader :hook, :method, :inject, :exclude
+  attr_reader :hook, :methods, :inject, :exclude
 end

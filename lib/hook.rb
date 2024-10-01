@@ -30,9 +30,9 @@ module Hook
   def run_around_hooks(method, *args, **kwargs, &block)
     self.class.get_hooks(:around).to_a.reverse.inject(block) do |chain, hook_configuration|
       hook_proc = proc { run_hook(method, hook_configuration, chain, *args, **kwargs) }
-      next hook_proc if hook_configuration.method.nil?
+      next hook_proc if hook_configuration.methods.empty?
 
-      next chain unless hook_configuration.method == method
+      next chain unless hook_configuration.methods.include?(method)
 
       hook_proc
     end.call
@@ -42,10 +42,10 @@ module Hook
     hooks.each do |hook_configuration|
       next if hook_configuration.exclude.include?(method)
 
-      body = run_hook(method, hook_configuration, -> {}, *args, **kwargs) if hook_configuration.method.nil?
+      body = run_hook(method, hook_configuration, -> {}, *args, **kwargs) if hook_configuration.methods.empty?
 
       return body if hook_error?(body)
-      next unless hook_configuration.method == method
+      next unless hook_configuration.methods.include?(method)
 
       body = run_hook(method, hook_configuration, -> {}, *args, **kwargs)
 
@@ -107,8 +107,13 @@ module Hook
       @hooks ||= { before: {}, after: {}, around: {} }
     end
 
-    def hook(kind, hook:, method: nil, inject: nil, exclude: nil)
-      hooks[kind][hook] = HookConfiguration.new(hook: hook, method: method, inject: inject, exclude: exclude)
+    def hook(kind, hook:, methods: [], inject: [], exclude: [])
+      hooks[kind][hook] = HookConfiguration.new(
+        hook: hook,
+        methods: methods,
+        inject: inject,
+        exclude: exclude
+      )
     end
 
     ####

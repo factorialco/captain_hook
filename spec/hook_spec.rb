@@ -35,13 +35,13 @@ end
 class ResourceWithHooks
   include Hook
 
-  hook :before, method: :cook, hook: CookHook.new, inject: [:policy_context]
-  hook :before, method: :deliver, hook: ErroringHook.new
+  hook :before, methods: [:cook], hook: CookHook.new, inject: [:policy_context]
+  hook :before, methods: [:deliver], hook: ErroringHook.new
 
-  hook :after, method: :prepare, hook: PrepareHook.new
-  hook :after, method: :invented_one, hook: PrepareHook.new
+  hook :after, methods: [:prepare], hook: PrepareHook.new
+  hook :after, methods: [:invented_one], hook: PrepareHook.new
 
-  hook :around, method: :serve, hook: ServeHook.new
+  hook :around, methods: [:serve], hook: ServeHook.new
 
   hook :before, hook: BeforeAllHook.new, exclude: [:serve]
 
@@ -74,8 +74,10 @@ describe Hook do
   subject { ResourceWithHooks.new }
 
   it do
-    expect_any_instance_of(CookHook).to receive(:call).with(subject, :cook,
-                                                            { policy_context: "foo" }).once.and_call_original
+    expect_any_instance_of(CookHook).to receive(:call).with(
+      subject,
+      :cook, { policy_context: "foo" }
+    ).once.and_call_original
 
     subject.cook
   end
