@@ -40,6 +40,8 @@ module Hook
 
   def run_hooks(method, hooks, *args, **kwargs)
     hooks.each do |hook_configuration|
+      next if hook_configuration.exclude.include?(method)
+
       body = run_hook(method, hook_configuration, -> {}, *args, **kwargs) if hook_configuration.method.nil?
 
       return body if hook_error?(body)
@@ -60,7 +62,7 @@ module Hook
 
     hook_configuration.hook.call(self, method, *args, **kwargs, &chain)
   rescue ArgumentError => e
-    puts "Argument error running hook: #{hook_configuration.hook.class.name} with method: #{hook_configuration.method}, args: #{args}, kwargs: #{kwargs}"
+    puts "Argument error running hook: #{hook_configuration.hook.class.name} with method: #{method}, args: #{args}, kwargs: #{kwargs}"
 
     raise e
   end
@@ -105,8 +107,8 @@ module Hook
       @hooks ||= { before: {}, after: {}, around: {} }
     end
 
-    def hook(kind, hook:, method: nil, inject: nil)
-      hooks[kind][hook] = HookConfiguration.new(hook: hook, method: method, inject: inject)
+    def hook(kind, hook:, method: nil, inject: nil, exclude: nil)
+      hooks[kind][hook] = HookConfiguration.new(hook: hook, method: method, inject: inject, exclude: exclude)
     end
 
     ####

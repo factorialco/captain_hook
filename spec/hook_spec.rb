@@ -43,7 +43,7 @@ class ResourceWithHooks
 
   hook :around, method: :serve, hook: ServeHook.new
 
-  hook :before, hook: BeforeAllHook.new
+  hook :before, hook: BeforeAllHook.new, exclude: [:serve]
 
   def prepare(foo)
     puts "preparing #{foo}"
@@ -100,7 +100,7 @@ describe Hook do
   context "around callback" do
     it do
       expect_any_instance_of(ServeHook).to receive(:call).once.and_call_original
-      expect_any_instance_of(BeforeAllHook).to receive(:call).once.and_call_original
+      expect_any_instance_of(BeforeAllHook).to_not receive(:call).and_call_original
 
       expect(subject.serve).to eq("servig food")
     end
