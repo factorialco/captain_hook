@@ -6,7 +6,7 @@ require_relative "./hook_configuration"
 #
 # Hook module, responsible to add the before, after and around callbacks on the
 # public methods of the class which requires it.
-module Hook
+module CaptainHook
   # Install Hook methods in the including class.
   def self.included(base)
     base.class_eval do

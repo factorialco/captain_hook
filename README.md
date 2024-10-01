@@ -1,39 +1,81 @@
-# Hook::Gem
+# captain_hook
 
-TODO: Delete this and the text below, and describe your gem
+A ruby gem to decorate your methods and run arbitrary hooks `before`, `after`
+or `around` them. It is similar on how Rails does with `before_action`,
+`after_action` and `around_action` but this for any class.
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/hook/gem`. To experiment with that code, run `bin/console` for an interactive prompt.
+It automatically wraps the configured methods to call the hooks `before`,
+`after` or `around` them.
 
 ## Installation
 
-TODO: Replace `UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG` with your gem name right after releasing it to RubyGems.org. Please do not do it earlier due to security reasons. Alternatively, replace this section with instructions to install your gem from git if you don't plan to release to RubyGems.org.
+Add the following line to your Gemfile:
 
-Install the gem and add to the application's Gemfile by executing:
+```ruby
+gem 'captain_hook', git: 'https://github.com/factorialco/captain_hook.git', branch: 'main'
+```
 
-    $ bundle add UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
+Then `bundle install`
 
-If bundler is not being used to manage dependencies, install the gem by executing:
+## Using it
 
-    $ gem install UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
+In order to inject the hook behavior, you need to include the `CaptainHook`
+module in your class and use the `hook` method to decorate the methods you want
+to hook.
 
-## Usage
+### Registering the hooks
 
-TODO: Write usage instructions here
+```ruby
+class MyService
+  include CaptainHook
 
-## Development
+  hook :before, methods: [:cook], hook: CookHook.new, inject: [:policy_context]
+  hook :before, methods: [:deliver], hook: ErroringHook.new
+  hook :before,
+       hook: BeforeAllHook.new,
+       exclude: [:serve],
+       skip_when: ->(_args, kwargs) { !kwargs[:dto] }
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+  hook :after, methods: [:prepare], hook: PrepareHook.new
+  hook :after, methods: [:invented_one], hook: PrepareHook.new
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and the created tag, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+  hook :around,
+       methods: %i[serve foo],
+       hook: ServeHook.new,
+       skip_when: ->(_args, kwargs) { kwargs[:dto] }
 
-## Contributing
+  def prepare(dto:); end
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/hook-gem. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [code of conduct](https://github.com/[USERNAME]/hook-gem/blob/main/CODE_OF_CONDUCT.md).
+  def cook; end
 
-## License
+  def serve; end
 
-The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
+  def deliver; end
+end
+```
 
-## Code of Conduct
+Parameters:
 
-Everyone interacting in the Hook::Gem project's codebases, issue trackers, chat rooms and mailing lists is expected to follow the [code of conduct](https://github.com/[USERNAME]/hook-gem/blob/main/CODE_OF_CONDUCT.md).
+- `methods`: an array of method names to hook. If not specified, it will hook
+  all methods.
+- `hook`: the instance of the hook to run.
+- inject: The hook will receive these additional keyword arguments from the
+  class hosting the method.
+- `exclude`: an array of method names to exclude from being hooked.
+- skip_when: a lambda that receives the positional and keyword arguments of the
+  method being decorated and returns a boolean to skip the hook.
+
+### Implementing your hooks
+
+You need to implement a class with the `#call` method.
+This method will receive the following positional parameters:
+
+- klass: the class where the method is defined
+- method: the method name
+- block: the original method (useful for around hooks)
+
+Additionally it will receive the positional and keyword arguments of the
+original method being decorated.
+
+You can inject additional keyword parameters by using the `inject` parameter
+when registering the hook.

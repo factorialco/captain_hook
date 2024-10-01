@@ -1,25 +1,25 @@
 # frozen_string_literal: true
 
 Gem::Specification.new do |spec|
-  spec.name = "hook"
+  spec.name = "captain_hook"
   spec.version = "1.0.0"
   spec.authors = ["Genar Trias Ortiz"]
   spec.email = ["gtrias@gmail.com"]
 
   spec.summary = "A gem to create decorator hooks approach for any ruby class, it supports before, after and around hooks"
   spec.description = "A gem to create decorator hooks approach for any ruby class"
-  spec.homepage = "https://github.com/gtrias/hook"
+  spec.homepage = "https://github.com/factorialco/captain_hook"
   spec.license = "MIT"
   spec.required_ruby_version = ">= 3.0.0"
 
   spec.metadata["allowed_push_host"] = "TODO: Set to your gem server 'https://example.com'"
 
   spec.metadata["homepage_uri"] = spec.homepage
-  spec.metadata["source_code_uri"] = "https://github.com/gtrias/hook"
-  spec.metadata["changelog_uri"] = "https://github.com/gtrias/hook"
+  spec.metadata["source_code_uri"] = "https://github.com/factorialco/captain_hook"
+  spec.metadata["changelog_uri"] = "https://github.com/factorialco/captain_hook"
 
   # Specify which files should be added to the gem when it is released.
-  spec.files = ["lib/hook.rb"]
+  spec.files = ["lib/captain_hook.rb"]
   spec.bindir = "exe"
   spec.executables = spec.files.grep(%r{\Aexe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]

@@ -33,7 +33,7 @@ class ErroringHook
 end
 
 class ResourceWithHooks
-  include Hook
+  include CaptainHook
 
   hook :before, methods: [:cook], hook: CookHook.new, inject: [:policy_context]
   hook :before, methods: [:deliver], hook: ErroringHook.new
@@ -75,7 +75,7 @@ class ResourceChildWithHooks < ResourceWithHooks
   def foo(dto:); end
 end
 
-describe Hook do
+describe CaptainHook do
   subject { ResourceWithHooks.new }
 
   it do
