@@ -37,12 +37,18 @@ class ResourceWithHooks
 
   hook :before, methods: [:cook], hook: CookHook.new, inject: [:policy_context]
   hook :before, methods: [:deliver], hook: ErroringHook.new
-  hook :before, hook: BeforeAllHook.new, exclude: [:serve], skip_when: ->(_args, kwargs) { !kwargs[:dto] }
+  hook :before,
+       hook: BeforeAllHook.new,
+       exclude: [:serve],
+       skip_when: ->(_args, kwargs) { !kwargs[:dto] }
 
   hook :after, methods: [:prepare], hook: PrepareHook.new
   hook :after, methods: [:invented_one], hook: PrepareHook.new
 
-  hook :around, methods: [:serve], hook: ServeHook.new
+  hook :around,
+       methods: %i[serve foo],
+       hook: ServeHook.new,
+       skip_when: ->(_args, kwargs) { kwargs[:dto] }
 
   def prepare(dto:)
     puts "preparing #{dto}"

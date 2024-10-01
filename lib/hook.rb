@@ -32,6 +32,7 @@ module Hook
       hook_proc = proc { run_hook(method, hook_configuration, chain, *args, **kwargs) }
       next hook_proc if hook_configuration.methods.empty?
 
+      next chain if hook_configuration.skip_when&.call(args, kwargs)
       next chain unless hook_configuration.methods.include?(method)
 
       hook_proc
