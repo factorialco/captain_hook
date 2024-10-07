@@ -1,9 +1,16 @@
 # frozen_string_literal: true
 
 require "pry"
+require "pry-byebug"
 
 class CookHook
   def call(klass, method, policy_context:); end
+end
+
+class ManyParametersHook
+  def call(_klass, _method, _one, _two, _three, &_block)
+    yield
+  end
 end
 
 class PrepareHook
@@ -17,7 +24,7 @@ class ServeHook
 end
 
 class BeforeAllHook
-  def call(klass, method); end
+  def call(klass, method, dto:); end
 end
 
 class CustomError
@@ -42,8 +49,17 @@ class ResourceWithHooks
        exclude: [:serve],
        skip_when: ->(_args, kwargs) { !kwargs[:dto] }
 
-  hook :after, methods: [:prepare], hook: PrepareHook.new
-  hook :after, methods: [:invented_one], hook: PrepareHook.new
+  hook :after, methods: %i[prepare invented_one], hook: PrepareHook.new
+
+  hook :around,
+       methods: [:prepare],
+       hook: ManyParametersHook.new,
+       # TODO: Maybe this should be defined in the hook class itself?
+       param_builder: lambda { |_klass, _method, args, _kwargs|
+         args += [1, 2, 3]
+
+         [args, {}]
+       }
 
   hook :around,
        methods: %i[serve foo],
@@ -89,9 +105,10 @@ describe CaptainHook do
 
   context "when the method is not defined in the hook" do
     it do
-      expect_any_instance_of(CookHook).not_to receive(:call).once
+      expect_any_instance_of(CookHook).not_to receive(:call).once.and_call_original
       expect_any_instance_of(PrepareHook).to receive(:call).once
-      expect_any_instance_of(BeforeAllHook).to receive(:call).once
+      expect_any_instance_of(BeforeAllHook).to receive(:call).once.and_call_original
+      expect_any_instance_of(ManyParametersHook).to receive(:call).once.and_call_original
 
       expect(subject.prepare(dto: "bar")).to eq("preparing bar")
     end

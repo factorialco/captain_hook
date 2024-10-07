@@ -22,17 +22,16 @@ module CaptainHook
   end
 
   # Around hooks are a bit different from before and after hooks, as they
-  # need to be executed in a stack-like way. This method is responsible to
-  #
-  # 1. Reverse the order of the around hooks, so they are executed
-  #   in the right order.
-  #
+  # need to be executed in a stack-like way.
   def run_around_hooks(method, *args, **kwargs, &block)
     self.class.get_hooks(:around).to_a.reverse.inject(block) do |chain, hook_configuration|
       next chain if hook_configuration.skip_when&.call(args, kwargs)
       next chain if hook_configuration.exclude.include?(method)
 
-      hook_proc = proc { run_hook(method, hook_configuration, chain, *args, **kwargs) }
+      hook_proc = proc {
+        run_hook(method, hook_configuration, chain, *args, **kwargs)
+      }
+
       next hook_proc if hook_configuration.methods.empty?
 
       next chain unless hook_configuration.methods.include?(method)
@@ -41,6 +40,7 @@ module CaptainHook
     end.call
   end
 
+  # Runs non-around hooks for a given method.
   def run_hooks(method, hooks, *args, **kwargs)
     hooks.each do |hook_configuration|
       next if hook_configuration.exclude.include?(method)
@@ -57,11 +57,16 @@ module CaptainHook
     end
   end
 
+  # Runs an specific hook based on its configuration
   def run_hook(method, hook_configuration, chain, *args, **kwargs)
     if hook_configuration.inject
       kwargs = kwargs.merge(hook_configuration.inject.each_with_object({}) do |inject, hash|
         hash[inject] = send(inject)
       end)
+    end
+
+    if hook_configuration.param_builder
+      args, kwargs = hook_configuration.param_builder.call(self.class, method, args, kwargs)
     end
 
     hook_configuration.hook.call(self, method, *args, **kwargs, &chain)
@@ -80,6 +85,7 @@ module CaptainHook
     ####
     # Hooks logic part
     ####
+    # Get all hooks from ancestors so you can define hooks in a parent class
     def get_ancestor_hooks
       ancestor_hooks = { before: {}, after: {}, around: {} }
 
@@ -122,14 +128,16 @@ module CaptainHook
       methods: [],
       inject: [],
       exclude: [],
-      skip_when: nil
+      skip_when: nil,
+      param_builder: nil
     )
       hooks[kind][hook] = HookConfiguration.new(
         hook: hook,
         methods: methods,
         inject: inject,
         exclude: exclude,
-        skip_when: skip_when
+        skip_when: skip_when,
+        param_builder: param_builder
       )
     end
 
@@ -169,9 +177,12 @@ module CaptainHook
 
       # We decorate the method with the before, after and around hooks
       define_method(method_name) do |*args, **kwargs|
-        around_body = lambda do |*_args, **_kwargs|
+        hook_args = args
+        hook_kwargs = kwargs
+
+        around_body = lambda do
           # Run before hooks
-          before_hook_result = run_hooks(method_name, self.class.get_hooks(:before), *args, **kwargs)
+          before_hook_result = run_hooks(method_name, self.class.get_hooks(:before), *hook_args, **hook_kwargs)
 
           return before_hook_result if hook_error?(before_hook_result)
 
@@ -192,12 +203,13 @@ module CaptainHook
                    end
 
           # Run after hooks
-          run_hooks(method_name, self.class.get_hooks(:after), *args, **kwargs)
+          run_hooks(method_name, self.class.get_hooks(:after), *hook_args, **hook_kwargs)
 
           result
         end
 
-        result = run_around_hooks(method_name, *args, **kwargs, &around_body)
+        result = run_around_hooks(method_name, *hook_args, **hook_kwargs, &around_body)
+
         result
       end
     end
