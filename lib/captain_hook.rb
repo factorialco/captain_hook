@@ -61,6 +61,9 @@ module CaptainHook
   def run_hook(method, hook_configuration, chain, *args, **kwargs)
     if hook_configuration.inject
       kwargs = kwargs.merge(hook_configuration.inject.each_with_object({}) do |inject, hash|
+        # If the method does not respond to the inject method, we skip it
+        next unless respond_to?(inject)
+
         hash[inject] = send(inject)
       end)
     end

@@ -42,7 +42,7 @@ end
 class ResourceWithHooks
   include CaptainHook
 
-  hook :before, methods: [:cook], hook: CookHook.new, inject: [:policy_context]
+  hook :before, methods: [:cook], hook: CookHook.new, inject: %i[policy_context unexistent_method]
   hook :before, methods: [:deliver], hook: ErroringHook.new
   hook :before,
        hook: BeforeAllHook.new,
