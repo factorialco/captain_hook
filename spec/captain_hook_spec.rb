@@ -18,7 +18,7 @@ class PrepareHook
 end
 
 class ServeHook
-  def call(_klass, _method)
+  def call(_klass, _method, dto: nil)
     yield
   end
 end
@@ -60,6 +60,9 @@ class ResourceWithHooks
 
          [args, {}]
        }
+  hook :around,
+       methods: %i[prepare],
+       hook: ServeHook.new
 
   hook :around,
        methods: %i[serve foo],
@@ -109,6 +112,7 @@ describe CaptainHook do
       expect_any_instance_of(PrepareHook).to receive(:call).once
       expect_any_instance_of(BeforeAllHook).to receive(:call).once.and_call_original
       expect_any_instance_of(ManyParametersHook).to receive(:call).once.and_call_original
+      expect_any_instance_of(ServeHook).to receive(:call).once.and_call_original
 
       expect(subject.prepare(dto: "bar")).to eq("preparing bar")
     end

@@ -28,8 +28,10 @@ module CaptainHook
       next chain if hook_configuration.skip_when&.call(args, kwargs)
       next chain if hook_configuration.exclude.include?(method)
 
+      instance = self
+
       hook_proc = proc {
-        run_hook(method, hook_configuration, chain, *args, **kwargs)
+        run_hook(method, hook_configuration, chain, instance, *args, **kwargs)
       }
 
       next hook_proc if hook_configuration.methods.empty?
@@ -46,25 +48,25 @@ module CaptainHook
       next if hook_configuration.exclude.include?(method)
       next if hook_configuration.skip_when&.call(args, kwargs)
 
-      body = run_hook(method, hook_configuration, -> {}, *args, **kwargs) if hook_configuration.methods.empty?
+      body = run_hook(method, hook_configuration, -> {}, self, *args, **kwargs) if hook_configuration.methods.empty?
 
       return body if hook_error?(body)
       next unless hook_configuration.methods.include?(method)
 
-      body = run_hook(method, hook_configuration, -> {}, *args, **kwargs)
+      body = run_hook(method, hook_configuration, -> {}, self, *args, **kwargs)
 
       return body if hook_error?(body)
     end
   end
 
   # Runs an specific hook based on its configuration
-  def run_hook(method, hook_configuration, chain, *args, **kwargs)
+  def run_hook(method, hook_configuration, chain, instance, *args, **kwargs)
     if hook_configuration.inject
       kwargs = kwargs.merge(hook_configuration.inject.each_with_object({}) do |inject, hash|
         # If the method does not respond to the inject method, we skip it
-        next unless respond_to?(inject)
+        next unless instance.respond_to?(inject)
 
-        hash[inject] = send(inject)
+        hash[inject] = instance.send(inject)
       end)
     end
 
