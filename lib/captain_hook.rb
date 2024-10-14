@@ -70,9 +70,7 @@ module CaptainHook
       end)
     end
 
-    if hook_configuration.param_builder
-      args, kwargs = hook_configuration.param_builder.call(self.class, method, args, kwargs)
-    end
+    args, kwargs = hook_configuration.param_builder.call(self, method, args, kwargs) if hook_configuration.param_builder
 
     hook_configuration.hook.call(self, method, *args, **kwargs, &chain)
   rescue ArgumentError => e

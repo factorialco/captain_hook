@@ -55,7 +55,7 @@ class ResourceWithHooks
        methods: [:prepare],
        hook: ManyParametersHook.new,
        # TODO: Maybe this should be defined in the hook class itself?
-       param_builder: lambda { |_klass, _method, args, _kwargs|
+       param_builder: lambda { |_instance, _method, args, _kwargs|
          args += [1, 2, 3]
 
          [args, {}]
