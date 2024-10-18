@@ -25,8 +25,10 @@ module CaptainHook
   # need to be executed in a stack-like way.
   def run_around_hooks(method, *args, **kwargs, &block)
     self.class.get_hooks(:around).to_a.reverse.inject(block) do |chain, hook_configuration|
+      # binding.pry if hook_configuration.hook.is_a?(ManyParametersHook)
+
       next chain if hook_configuration.skip_when&.call(args, kwargs)
-      next chain if hook_configuration.exclude.include?(method)
+      next chain if hook_configuration.skip?(method)
 
       instance = self
 
@@ -36,7 +38,7 @@ module CaptainHook
 
       next hook_proc if hook_configuration.methods.empty?
 
-      next chain unless hook_configuration.methods.include?(method)
+      next chain if hook_configuration.skip?(method)
 
       hook_proc
     end.call
@@ -45,12 +47,13 @@ module CaptainHook
   # Runs non-around hooks for a given method.
   def run_hooks(method, hooks, *args, **kwargs)
     hooks.each do |hook_configuration|
-      next if hook_configuration.exclude.include?(method)
+      next if hook_configuration.skip?(method)
       next if hook_configuration.skip_when&.call(args, kwargs)
 
       body = run_hook(method, hook_configuration, -> {}, self, *args, **kwargs) if hook_configuration.methods.empty?
 
       return body if hook_error?(body)
+      # FIXME: review this condition
       next unless hook_configuration.methods.include?(method)
 
       body = run_hook(method, hook_configuration, -> {}, self, *args, **kwargs)
