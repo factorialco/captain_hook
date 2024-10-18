@@ -92,6 +92,11 @@ end
 
 class ResourceChildWithHooks < ResourceWithHooks
   def foo(dto:); end
+
+  def prepare
+    super
+    "servig food"
+  end
 end
 
 describe CaptainHook do
@@ -143,10 +148,13 @@ describe CaptainHook do
   context "a subclass of a class with hooks should inherit them" do
     subject { ResourceChildWithHooks.new }
 
-    it do
+    fit do
       expect_any_instance_of(BeforeAllHook).to receive(:call).once
 
       subject.foo(dto: "fooing")
+
+      expect_any_instance_of(BeforeAllHook).to receive(:call).once
+      subject.prepare
     end
   end
 end
