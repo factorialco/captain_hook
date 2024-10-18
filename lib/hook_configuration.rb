@@ -27,6 +27,8 @@ class HookConfiguration
 
     return false if methods.empty?
 
+    return true if skip_when&.call(args, kwargs)
+
     !methods.include?(method)
   end
 end

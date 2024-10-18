@@ -47,7 +47,7 @@ describe HookConfiguration do
     end
 
     context "when skip_when block is provided" do
-      let(:skip_when) {}
+      let(:skip_when) { ->(_args, kwargs) { kwargs[:dto].nil? } }
 
       it "it evaluates the skip_when to decide if its shown" do
         expect(subject.skip?(method, args, kwargs)).to be_truthy
