@@ -92,6 +92,11 @@ end
 
 class ResourceChildWithHooks < ResourceWithHooks
   def foo(dto:); end
+
+  def prepare
+    super
+    "servig food"
+  end
 end
 
 describe CaptainHook do
@@ -107,7 +112,7 @@ describe CaptainHook do
   end
 
   context "when the method is not defined in the hook" do
-    it do
+    it "calls all hooks with not methods defined" do
       expect_any_instance_of(CookHook).not_to receive(:call).once.and_call_original
       expect_any_instance_of(PrepareHook).to receive(:call).once
       expect_any_instance_of(BeforeAllHook).to receive(:call).once.and_call_original
@@ -147,6 +152,9 @@ describe CaptainHook do
       expect_any_instance_of(BeforeAllHook).to receive(:call).once
 
       subject.foo(dto: "fooing")
+
+      #     expect_any_instance_of(BeforeAllHook).to receive(:call).once
+      #     subject.prepare
     end
   end
 end
