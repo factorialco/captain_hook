@@ -20,14 +20,15 @@ class HookConfiguration
 
   attr_reader :hook, :methods, :inject, :exclude, :skip_when, :param_builder
 
-  # This determines if this specific hook should be skipped 
+  # This determines if this specific hook should be skipped
   # depending on the method or arguments.
   def skip?(method, *args, **kwargs)
+    # binding.pry if hook.class.name == "PrepareHook"
+
+    return true if skip_when&.call(args, kwargs)
     return true if exclude.include?(method)
 
     return false if methods.empty?
-
-    return true if skip_when&.call(args, kwargs)
 
     !methods.include?(method)
   end
