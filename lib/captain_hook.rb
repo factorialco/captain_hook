@@ -25,33 +25,20 @@ module CaptainHook
   # need to be executed in a stack-like way.
   def run_around_hooks(method, *args, **kwargs, &block)
     self.class.get_hooks(:around).to_a.reverse.inject(block) do |chain, hook_configuration|
-      next chain if hook_configuration.skip_when&.call(args, kwargs)
-      next chain if hook_configuration.exclude.include?(method)
+      next chain if hook_configuration.skip?(method, args, kwargs)
 
       instance = self
 
-      hook_proc = proc {
+      proc {
         run_hook(method, hook_configuration, chain, instance, *args, **kwargs)
       }
-
-      next hook_proc if hook_configuration.methods.empty?
-
-      next chain unless hook_configuration.methods.include?(method)
-
-      hook_proc
     end.call
   end
 
   # Runs non-around hooks for a given method.
   def run_hooks(method, hooks, *args, **kwargs)
     hooks.each do |hook_configuration|
-      next if hook_configuration.exclude.include?(method)
-      next if hook_configuration.skip_when&.call(args, kwargs)
-
-      body = run_hook(method, hook_configuration, -> {}, self, *args, **kwargs) if hook_configuration.methods.empty?
-
-      return body if hook_error?(body)
-      next unless hook_configuration.methods.include?(method)
+      next if hook_configuration.skip?(method, *args, **kwargs)
 
       body = run_hook(method, hook_configuration, -> {}, self, *args, **kwargs)
 
@@ -175,6 +162,8 @@ module CaptainHook
       mark_as_overriden!(method_name)
 
       original_method_name = :"#{method_name}__without_hooks"
+
+      return if method_defined?(original_method_name)
 
       alias_method original_method_name, method_name
 

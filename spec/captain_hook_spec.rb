@@ -14,7 +14,7 @@ class ManyParametersHook
 end
 
 class PrepareHook
-  def call(klass, method); end
+  def call(klass, method, dto:); end
 end
 
 class ServeHook
@@ -92,6 +92,11 @@ end
 
 class ResourceChildWithHooks < ResourceWithHooks
   def foo(dto:); end
+
+  def prepare(dto:)
+    super(dto: dto)
+    "child #{dto}"
+  end
 end
 
 describe CaptainHook do
@@ -107,9 +112,9 @@ describe CaptainHook do
   end
 
   context "when the method is not defined in the hook" do
-    it do
+    it "calls all hooks with not methods defined" do
       expect_any_instance_of(CookHook).not_to receive(:call).once.and_call_original
-      expect_any_instance_of(PrepareHook).to receive(:call).once
+      expect_any_instance_of(PrepareHook).to receive(:call).once.and_call_original
       expect_any_instance_of(BeforeAllHook).to receive(:call).once.and_call_original
       expect_any_instance_of(ManyParametersHook).to receive(:call).once.and_call_original
       expect_any_instance_of(ServeHook).to receive(:call).once.and_call_original
@@ -144,9 +149,11 @@ describe CaptainHook do
     subject { ResourceChildWithHooks.new }
 
     it do
-      expect_any_instance_of(BeforeAllHook).to receive(:call).once
-
+      expect_any_instance_of(BeforeAllHook).to receive(:call).twice
       subject.foo(dto: "fooing")
+
+      expect_any_instance_of(BeforeAllHook).to receive(:call).once
+      expect(subject.prepare(dto: "foo")).to eq("child foo")
     end
   end
 end
