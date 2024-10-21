@@ -29,15 +29,9 @@ module CaptainHook
 
       instance = self
 
-      hook_proc = proc {
+      proc {
         run_hook(method, hook_configuration, chain, instance, *args, **kwargs)
       }
-
-      next hook_proc if hook_configuration.methods.empty?
-
-      next chain if hook_configuration.skip?(method, args, kwargs)
-
-      hook_proc
     end.call
   end
 
@@ -169,7 +163,7 @@ module CaptainHook
 
       original_method_name = :"#{method_name}__without_hooks"
 
-      alias_method original_method_name, method_name
+      alias_method original_method_name, method_name unless method_defined?(original_method_name)
 
       # We decorate the method with the before, after and around hooks
       define_method(method_name) do |*args, **kwargs|

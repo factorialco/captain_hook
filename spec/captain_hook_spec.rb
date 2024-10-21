@@ -47,9 +47,7 @@ class ResourceWithHooks
   hook :before,
        hook: BeforeAllHook.new,
        exclude: [:serve],
-       skip_when: lambda { |_args, kwargs|
-         !kwargs[:dto]
-       }
+       skip_when: ->(_args, kwargs) { !kwargs[:dto] }
 
   hook :after, methods: %i[prepare invented_one], hook: PrepareHook.new
 
@@ -95,8 +93,8 @@ end
 class ResourceChildWithHooks < ResourceWithHooks
   def foo(dto:); end
 
-  def prepare
-    super
+  def prepare(dto:)
+    super(dto: dto)
     "servig food"
   end
 end
@@ -151,12 +149,11 @@ describe CaptainHook do
     subject { ResourceChildWithHooks.new }
 
     it do
-      expect_any_instance_of(BeforeAllHook).to receive(:call).once
-
+      expect_any_instance_of(BeforeAllHook).to receive(:call).twice
       subject.foo(dto: "fooing")
 
       expect_any_instance_of(BeforeAllHook).to receive(:call).once
-      subject.prepare
+      subject.prepare(dto: "foo")
     end
   end
 end
