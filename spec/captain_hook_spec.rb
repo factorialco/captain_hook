@@ -95,7 +95,7 @@ class ResourceChildWithHooks < ResourceWithHooks
 
   def prepare(dto:)
     super(dto: dto)
-    "servig food"
+    "child #{dto}"
   end
 end
 
@@ -153,7 +153,7 @@ describe CaptainHook do
       subject.foo(dto: "fooing")
 
       expect_any_instance_of(BeforeAllHook).to receive(:call).once
-      subject.prepare(dto: "foo")
+      expect(subject.prepare(dto: "foo")).to eq("child foo")
     end
   end
 end

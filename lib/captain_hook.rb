@@ -163,7 +163,9 @@ module CaptainHook
 
       original_method_name = :"#{method_name}__without_hooks"
 
-      alias_method original_method_name, method_name unless method_defined?(original_method_name)
+      return if method_defined?(original_method_name)
+
+      alias_method original_method_name, method_name
 
       # We decorate the method with the before, after and around hooks
       define_method(method_name) do |*args, **kwargs|
