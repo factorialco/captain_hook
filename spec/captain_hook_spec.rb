@@ -39,6 +39,8 @@ class ErroringHook
   end
 end
 
+SkipWhenProc = proc { |_args, kwargs| kwargs[:dto] }
+
 class ResourceWithHooks
   include CaptainHook
 
@@ -67,7 +69,7 @@ class ResourceWithHooks
   hook :around,
        include: %i[serve foo],
        hook: ServeHook.new,
-       skip_when: ->(_args, kwargs) { kwargs[:dto] }
+       skip_when: SkipWhenProc
 
   def prepare(dto:)
     puts "preparing #{dto}"
@@ -153,6 +155,15 @@ describe CaptainHook do
       subject.foo(dto: "fooing")
 
       expect_any_instance_of(BeforeAllHook).to receive(:call).once
+      expect(subject.prepare(dto: "foo")).to eq("child foo")
+    end
+  end
+
+  context "when skip_when block is provided" do
+    subject { ResourceChildWithHooks.new }
+
+    it do
+      expect(SkipWhenProc).to receive(:call).once.with([], { dto: "foo" })
       expect(subject.prepare(dto: "foo")).to eq("child foo")
     end
   end
