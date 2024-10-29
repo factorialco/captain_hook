@@ -39,20 +39,22 @@ class ErroringHook
   end
 end
 
+SkipWhenProc = proc { |_args, kwargs| kwargs[:dto] }
+
 class ResourceWithHooks
   include CaptainHook
 
-  hook :before, methods: [:cook], hook: CookHook.new, inject: %i[policy_context unexistent_method]
-  hook :before, methods: [:deliver], hook: ErroringHook.new
+  hook :before, include: [:cook], hook: CookHook.new, inject: %i[policy_context unexistent_method]
+  hook :before, include: [:deliver], hook: ErroringHook.new
   hook :before,
        hook: BeforeAllHook.new,
        exclude: [:serve],
        skip_when: ->(_args, kwargs) { !kwargs[:dto] }
 
-  hook :after, methods: %i[prepare invented_one], hook: PrepareHook.new
+  hook :after, include: %i[prepare invented_one], hook: PrepareHook.new
 
   hook :around,
-       methods: [:prepare],
+       include: [:prepare],
        hook: ManyParametersHook.new,
        # TODO: Maybe this should be defined in the hook class itself?
        param_builder: lambda { |_instance, _method, args, _kwargs|
@@ -61,13 +63,13 @@ class ResourceWithHooks
          [args, {}]
        }
   hook :around,
-       methods: %i[prepare],
+       include: %i[prepare],
        hook: ServeHook.new
 
   hook :around,
-       methods: %i[serve foo],
+       include: %i[serve foo],
        hook: ServeHook.new,
-       skip_when: ->(_args, kwargs) { kwargs[:dto] }
+       skip_when: SkipWhenProc
 
   def prepare(dto:)
     puts "preparing #{dto}"
@@ -112,7 +114,7 @@ describe CaptainHook do
   end
 
   context "when the method is not defined in the hook" do
-    it "calls all hooks with not methods defined" do
+    it "calls all hooks with not include defined" do
       expect_any_instance_of(CookHook).not_to receive(:call).once.and_call_original
       expect_any_instance_of(PrepareHook).to receive(:call).once.and_call_original
       expect_any_instance_of(BeforeAllHook).to receive(:call).once.and_call_original
@@ -153,6 +155,15 @@ describe CaptainHook do
       subject.foo(dto: "fooing")
 
       expect_any_instance_of(BeforeAllHook).to receive(:call).once
+      expect(subject.prepare(dto: "foo")).to eq("child foo")
+    end
+  end
+
+  context "when skip_when block is provided" do
+    subject { ResourceChildWithHooks.new }
+
+    it do
+      expect(SkipWhenProc).to receive(:call).once.with([], { dto: "foo" })
       expect(subject.prepare(dto: "foo")).to eq("child foo")
     end
   end

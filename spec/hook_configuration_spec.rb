@@ -13,13 +13,13 @@ describe HookConfiguration do
   let(:kwargs) { {} }
   let(:method) { :foo }
   let(:excluded_method) { :excluded_foo }
-  let(:methods) { [method] }
+  let(:include) { [method] }
   let(:skip_when) { nil }
 
   subject do
     HookConfiguration.new(
       hook: hook,
-      methods: methods,
+      include: include,
       exclude: [excluded_method],
       skip_when: skip_when
     )
@@ -32,8 +32,8 @@ describe HookConfiguration do
       end
     end
 
-    context "when methods is empty should always run" do
-      let(:methods) { [] }
+    context "when include is empty should always run" do
+      let(:include) { [] }
 
       it do
         expect(subject.skip?(method, args, kwargs)).to be_falsey

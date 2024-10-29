@@ -25,7 +25,7 @@ module CaptainHook
   # need to be executed in a stack-like way.
   def run_around_hooks(method, *args, **kwargs, &block)
     self.class.get_hooks(:around).to_a.reverse.inject(block) do |chain, hook_configuration|
-      next chain if hook_configuration.skip?(method, args, kwargs)
+      next chain if hook_configuration.skip?(method, *args, **kwargs)
 
       instance = self
 
@@ -109,13 +109,13 @@ module CaptainHook
 
     # Main hook configuartion entrypoint
     # Examples:
-    # hook :before, hook: CookHook.new, methods: [:cook], inject: [:policy_context]
+    # hook :before, hook: CookHook.new, include: [:cook], inject: [:policy_context]
     # hook :before, hook: ErroringHook.new
     # hook :around, hook: ServeHook.new
     def hook(
       kind,
       hook:,
-      methods: [],
+      include: [],
       inject: [],
       exclude: [],
       skip_when: nil,
@@ -123,7 +123,7 @@ module CaptainHook
     )
       hooks[kind][hook] = HookConfiguration.new(
         hook: hook,
-        methods: methods,
+        include: include,
         inject: inject,
         exclude: exclude,
         skip_when: skip_when,
