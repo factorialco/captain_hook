@@ -171,7 +171,7 @@ module CaptainHook
       original_method_name = :"#{method_name}__without_hooks"
       
       # Skip if this is an inherited method that's already decorated
-      return if method_defined?(original_method_name)
+      # return if method_defined?(original_method_name)
 
       alias_method original_method_name, method_name
 

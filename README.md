@@ -79,3 +79,8 @@ original method being decorated.
 
 You can inject additional keyword parameters by using the `inject` parameter
 when registering the hook.
+
+### Caveats
+
+- You can not call super from a child class decorated method, you will enter in
+an infinite loop

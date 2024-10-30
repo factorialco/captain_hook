@@ -96,7 +96,8 @@ class ResourceChildWithHooks < ResourceWithHooks
   def foo(dto:); end
 
   def prepare(dto:)
-    super(dto: dto)
+    # This is not supported, it causes hook double execution
+    # super(dto: dto)
     "child #{dto}"
   end
 end
