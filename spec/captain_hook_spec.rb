@@ -44,7 +44,9 @@ SkipWhenProc = proc { |_args, kwargs| kwargs[:dto] }
 class ResourceWithHooks
   include CaptainHook
 
-  hook :before, include: [:cook], hook: CookHook.new, inject: %i[policy_context unexistent_method]
+  hook :before, include: [:cook], hook: CookHook.new, param_builder: lambda { |instance, _method, args, kwargs|
+    [args, kwargs.merge(policy_context: instance.send(:policy_context))]
+  }
   hook :before, include: [:deliver], hook: ErroringHook.new
   hook :before,
        hook: BeforeAllHook.new,
@@ -86,6 +88,8 @@ class ResourceWithHooks
   end
 
   def deliver; end
+
+  private
 
   def policy_context
     "foo"
@@ -166,6 +170,28 @@ describe CaptainHook do
     it do
       expect(SkipWhenProc).to receive(:call).once.with([], { dto: "foo" })
       expect(subject.prepare(dto: "foo")).to eq("child foo")
+    end
+
+    it "processes param_builder before skip_when" do
+      param_builder = ->(instance, _method, args, kwargs) { [args, kwargs.merge(check_value: true)] }
+      skip_check = ->(args, kwargs) { kwargs[:check_value] }
+
+      hook_class = Class.new do
+        def call(klass, method, check_value:)
+          yield if block_given?
+        end
+      end
+
+      ResourceWithHooks.hook :around,
+                             include: [:cook],
+                             hook: hook_class.new,
+                             param_builder: param_builder,
+                             skip_when: skip_check
+
+      expect(param_builder).to receive(:call).once.and_call_original
+      expect(skip_check).to receive(:call).once.with([], { check_value: true })
+
+      subject.cook
     end
   end
 end

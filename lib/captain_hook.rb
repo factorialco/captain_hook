@@ -21,16 +21,21 @@ module CaptainHook
     end
   end
 
+  def prepare_hook_params(method, hook_configuration, args, kwargs)
+    return hook_configuration.param_builder.call(self, method, args, kwargs) if hook_configuration.param_builder
+
+    [args, kwargs]
+  end
+
   # Around hooks are a bit different from before and after hooks, as they
   # need to be executed in a stack-like way.
   def run_around_hooks(method, *args, **kwargs, &block)
     self.class.get_hooks(:around).to_a.reverse.inject(block) do |chain, hook_configuration|
-      next chain if hook_configuration.skip?(method, *args, **kwargs)
-
-      instance = self
+      hook_args, hook_kwargs = prepare_hook_params(method, hook_configuration, args, kwargs)
+      next chain if hook_configuration.skip?(method, *hook_args, **hook_kwargs)
 
       proc {
-        run_hook(method, hook_configuration, chain, instance, *args, **kwargs)
+        run_hook(method, hook_configuration, chain, *hook_args, **hook_kwargs)
       }
     end.call
   end
@@ -38,31 +43,20 @@ module CaptainHook
   # Runs non-around hooks for a given method.
   def run_hooks(method, hooks, *args, **kwargs)
     hooks.each do |hook_configuration|
-      next if hook_configuration.skip?(method, *args, **kwargs)
+      hook_args, hook_kwargs = prepare_hook_params(method, hook_configuration, args, kwargs)
+      next if hook_configuration.skip?(method, *hook_args, **hook_kwargs)
 
-      body = run_hook(method, hook_configuration, -> {}, self, *args, **kwargs)
-
+      body = run_hook(method, hook_configuration, -> {}, *hook_args, **hook_kwargs)
       return body if hook_error?(body)
     end
   end
 
   # Runs an specific hook based on its configuration
-  def run_hook(method, hook_configuration, chain, instance, *args, **kwargs)
-    if hook_configuration.inject
-      kwargs = kwargs.merge(hook_configuration.inject.each_with_object({}) do |inject, hash|
-        # If the method does not respond to the inject method, we skip it
-        next unless instance.respond_to?(inject)
-
-        hash[inject] = instance.send(inject)
-      end)
-    end
-
-    args, kwargs = hook_configuration.param_builder.call(self, method, args, kwargs) if hook_configuration.param_builder
-
+  def run_hook(method, hook_configuration, chain, *args, **kwargs)
+    # puts "Running hook: #{hook_configuration.hook.class.name} with method: #{self.class.name}##{method}"
     hook_configuration.hook.call(self, method, *args, **kwargs, &chain)
   rescue ArgumentError => e
     puts "Argument error running hook: #{hook_configuration.hook.class.name} with method: #{method}, args: #{args}, kwargs: #{kwargs}"
-
     raise e
   end
 
@@ -192,4 +186,7 @@ module CaptainHook
       end
     end
   end
+
+  private
+
 end
