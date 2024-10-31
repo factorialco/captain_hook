@@ -75,37 +75,16 @@ module CaptainHook
     ####
     # Hooks logic part
     ####
-    # Get all hooks from ancestors so you can define hooks in a parent class
-    def get_ancestor_hooks
-      # Start with empty hash for each hook type
-      ancestor_hooks = { before: {}, after: {}, around: {} }
-      
-      # Get all ancestors that have hooks, from most distant to closest
-      hook_ancestors = ancestors.reverse.select { |ancestor| ancestor.respond_to?(:hooks) }
-      
-      # Build a hash of unique hooks, with later ancestors overriding earlier ones
-      hook_ancestors.each do |ancestor|
-        [:before, :after, :around].each do |kind|
-          ancestor.hooks[kind].each do |hook, config|
-            # Use the hook object itself as the key
-            ancestor_hooks[kind][hook] = config
-          end
-        end
-      end
-
-      ancestor_hooks
-    end
-
     def get_hooks(kind)
       # Only get hooks from the most specific class that defines them
       return hooks[kind].values if hooks[kind].any?
-      
+
       # If no hooks defined in this class, look up the inheritance chain
-      ancestors[1..-1].each do |ancestor|
+      ancestors[1..].each do |ancestor|
         next unless ancestor.respond_to?(:hooks)
         return ancestor.hooks[kind].values if ancestor.hooks[kind].any?
       end
-      
+
       # If no hooks found anywhere in the chain, return empty array
       []
     end
@@ -169,7 +148,7 @@ module CaptainHook
       mark_as_overriden!(method_name)
 
       original_method_name = :"#{method_name}__without_hooks"
-      
+
       # Skip if this is an inherited method that's already decorated
       # return if method_defined?(original_method_name)
 
