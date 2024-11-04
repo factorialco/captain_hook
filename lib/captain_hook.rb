@@ -121,12 +121,10 @@ module CaptainHook
     def method_added(method_name)
       if !public_method_defined?(method_name) || overriden?(method_name) ||
          method_name.to_s.end_with?("__without_hooks")
-        return super(method_name)
+        return super
       end
 
       decorate_method!(method_name)
-    ensure
-      super(method_name)
     end
 
     def overriden_methods

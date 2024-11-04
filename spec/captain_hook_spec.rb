@@ -173,11 +173,11 @@ describe CaptainHook do
     end
 
     it "processes param_builder before skip_when" do
-      param_builder = ->(instance, _method, args, kwargs) { [args, kwargs.merge(check_value: true)] }
-      skip_check = ->(args, kwargs) { kwargs[:check_value] }
+      param_builder = ->(_instance, _method, args, kwargs) { [args, kwargs.merge(check_value: true)] }
+      skip_check = ->(_args, kwargs) { kwargs[:check_value] }
 
       hook_class = Class.new do
-        def call(klass, method, check_value:)
+        def call(_klass, _method, check_value:)
           yield if block_given?
         end
       end
