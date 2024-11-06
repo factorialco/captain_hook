@@ -11,12 +11,132 @@ module CaptainHook
   def self.included(base)
     base.class_eval do
       extend ClassMethods
+    end
+  end
 
-      def self.inherited(subclass)
-        super
-        subclass.class_eval do
-          extend ClassMethods
+  # Class methods for the including class.
+  module ClassMethods
+    # Main hook configuartion entrypoint, DSL
+    # Examples:
+    # hook :before, hook: CookHook.new, include: [:cook], inject: [:policy_context]
+    # hook :before, hook: ErroringHook.new
+    # hook :around, hook: ServeHook.new
+    def hook(
+      kind,
+      hook:,
+      include: [],
+      inject: [],
+      exclude: [],
+      skip_when: nil,
+      param_builder: nil
+    )
+      hooks[kind][hook] = HookConfiguration.new(
+        hook: hook,
+        include: include,
+        inject: inject,
+        exclude: exclude,
+        skip_when: skip_when,
+        param_builder: param_builder
+      )
+    end
+
+    ####
+    # Hooks logic part
+    ####
+    def get_hooks(kind)
+      # Only get hooks from the most specific class that defines them
+      return hooks[kind].values if hooks[kind].any?
+
+      # If no hooks defined in this class, look up the inheritance chain
+      ancestors[1..].each do |ancestor|
+        next unless ancestor.respond_to?(:hooks)
+        return ancestor.hooks[kind].values if ancestor.hooks[kind].any?
+      end
+
+      # If no hooks found anywhere in the chain, return empty array
+      []
+    end
+
+    def hooks
+      @hooks ||= { before: {}, after: {}, around: {} }
+    end
+
+    ####
+    # Decorator pattern logic part
+    ####
+    def overriden?(method)
+      overriden_methods.include? method
+    end
+
+    def method_excluded_by_all_hooks?(method)
+      get_hooks(:before).all? { |hook| hook.exclude.include?(method) } &&
+        get_hooks(:after).all? { |hook| hook.exclude.include?(method) }
+    end
+
+    def method_added(method_name)
+      unless !public_method_defined?(method_name) || overriden?(method_name) ||
+             method_name.to_s.end_with?("__without_hooks")
+
+        decorate_method!(method_name)
+      end
+
+      super
+    end
+
+    def overriden_methods
+      @overriden_methods ||= Set.new
+    end
+
+    def mark_as_overriden!(method)
+      overriden_methods << method
+    end
+
+    # Replaces the method with a decorated version of it
+    def decorate_method!(method_name)
+      mark_as_overriden!(method_name)
+
+      original_method_name = :"#{method_name}__without_hooks"
+
+      # Skip if the method is excluded by all hooks
+      return if method_excluded_by_all_hooks?(method_name)
+
+      alias_method original_method_name, method_name
+
+      define_method(method_name) do |*args, **kwargs|
+        hook_args = args
+        hook_kwargs = kwargs
+
+        around_body = lambda do
+          # Run before hooks
+          before_hook_result = run_hooks(method_name, self.class.get_hooks(:before), *hook_args, **hook_kwargs)
+
+          return before_hook_result if hook_error?(before_hook_result)
+
+          # Supporting any kind of method, without arguments, with positional
+          # or with named parameters. Or any combination of them.
+          result = if args.empty? && kwargs.empty?
+                     send(original_method_name)
+                   elsif args.empty?
+                     send(original_method_name, **kwargs)
+                   elsif kwargs.empty?
+                     if args.length == 1 && args[0].is_a?(Hash)
+                       send(original_method_name, **args[0])
+                     else
+                       send(original_method_name, *args)
+                     end
+                   else
+                     send(original_method_name, *args, **kwargs)
+                   end
+
+          # Run after hooks
+          run_hooks(method_name, self.class.get_hooks(:after), *hook_args, **hook_kwargs)
+
+          result
         end
+
+        result = run_around_hooks(method_name, *hook_args, **hook_kwargs, &around_body)
+
+        result
       end
     end
   end
@@ -63,130 +183,4 @@ module CaptainHook
   def hook_error?(result)
     result.respond_to?(:error?) && result.error?
   end
-
-  # Class methods for the including class.
-  module ClassMethods
-    ####
-    # Hooks logic part
-    ####
-    def get_hooks(kind)
-      # Only get hooks from the most specific class that defines them
-      return hooks[kind].values if hooks[kind].any?
-
-      # If no hooks defined in this class, look up the inheritance chain
-      ancestors[1..].each do |ancestor|
-        next unless ancestor.respond_to?(:hooks)
-        return ancestor.hooks[kind].values if ancestor.hooks[kind].any?
-      end
-
-      # If no hooks found anywhere in the chain, return empty array
-      []
-    end
-
-    def hooks
-      @hooks ||= { before: {}, after: {}, around: {} }
-    end
-
-    # Main hook configuartion entrypoint
-    # Examples:
-    # hook :before, hook: CookHook.new, include: [:cook], inject: [:policy_context]
-    # hook :before, hook: ErroringHook.new
-    # hook :around, hook: ServeHook.new
-    def hook(
-      kind,
-      hook:,
-      include: [],
-      inject: [],
-      exclude: [],
-      skip_when: nil,
-      param_builder: nil
-    )
-      hooks[kind][hook] = HookConfiguration.new(
-        hook: hook,
-        include: include,
-        inject: inject,
-        exclude: exclude,
-        skip_when: skip_when,
-        param_builder: param_builder
-      )
-    end
-
-    ####
-    # Decorator pattern logic part
-    ####
-    def overriden?(method)
-      overriden_methods.include? method
-    end
-
-    def method_added(method_name)
-      if !public_method_defined?(method_name) || overriden?(method_name) ||
-         method_name.to_s.end_with?("__without_hooks")
-        return super(method_name)
-      end
-
-      decorate_method!(method_name)
-    ensure
-      super(method_name)
-    end
-
-    def overriden_methods
-      @overriden_methods ||= Set.new
-    end
-
-    def mark_as_overriden!(method)
-      overriden_methods << method
-    end
-
-    # Replaces the method with a decorated version of it
-    def decorate_method!(method_name)
-      mark_as_overriden!(method_name)
-
-      original_method_name = :"#{method_name}__without_hooks"
-
-      # Skip if this is an inherited method that's already decorated
-      # return if method_defined?(original_method_name)
-
-      alias_method original_method_name, method_name
-
-      define_method(method_name) do |*args, **kwargs|
-        hook_args = args
-        hook_kwargs = kwargs
-
-        around_body = lambda do
-          # Run before hooks
-          before_hook_result = run_hooks(method_name, self.class.get_hooks(:before), *hook_args, **hook_kwargs)
-
-          return before_hook_result if hook_error?(before_hook_result)
-
-          # Supporting any kind of method, without arguments, with positional
-          # or with named parameters. Or any combination of them.
-          result = if args.empty? && kwargs.empty?
-                     send(original_method_name)
-                   elsif args.empty?
-                     send(original_method_name, **kwargs)
-                   elsif kwargs.empty?
-                     if args.length == 1 && args[0].is_a?(Hash)
-                       send(original_method_name, **args[0])
-                     else
-                       send(original_method_name, *args)
-                     end
-                   else
-                     send(original_method_name, *args, **kwargs)
-                   end
-
-          # Run after hooks
-          run_hooks(method_name, self.class.get_hooks(:after), *hook_args, **hook_kwargs)
-
-          result
-        end
-
-        result = run_around_hooks(method_name, *hook_args, **hook_kwargs, &around_body)
-
-        result
-      end
-    end
-  end
-
-  private
-
 end
