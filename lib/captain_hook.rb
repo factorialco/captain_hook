@@ -40,6 +40,16 @@ module CaptainHook
       )
     end
 
+    def hooks_module
+      @hooks_module ||= prepend_hooks_module
+    end
+
+    def prepend_hooks_module
+      const_set(:CaptainHookDecorator, Module.new).tap do |decorator|
+        prepend decorator
+      end
+    end
+
     ####
     # Hooks logic part
     ####
@@ -65,7 +75,7 @@ module CaptainHook
     # Decorator pattern logic part
     ####
     def overriden?(method)
-      overriden_methods.include? method
+      hooks_module.methods.include? method
     end
 
     def method_excluded_by_all_hooks?(method)
@@ -74,35 +84,17 @@ module CaptainHook
     end
 
     def method_added(method_name)
-      unless !public_method_defined?(method_name) || overriden?(method_name) ||
-             method_name.to_s.end_with?("__without_hooks")
-
-        decorate_method!(method_name)
-      end
+      prepend_method!(method_name) unless !public_method_defined?(method_name) || overriden?(method_name)
 
       super
     end
 
-    def overriden_methods
-      @overriden_methods ||= Set.new
-    end
-
-    def mark_as_overriden!(method)
-      overriden_methods << method
-    end
-
     # Replaces the method with a decorated version of it
-    def decorate_method!(method_name)
-      mark_as_overriden!(method_name)
-
-      original_method_name = :"#{method_name}__without_hooks"
-
+    def prepend_method!(method_name)
       # Skip if the method is excluded by all hooks
       return if method_excluded_by_all_hooks?(method_name)
 
-      alias_method original_method_name, method_name
-
-      define_method(method_name) do |*args, **kwargs|
+      hooks_module.define_method(method_name) do |*args, **kwargs|
         hook_args = args
         hook_kwargs = kwargs
 
@@ -115,17 +107,17 @@ module CaptainHook
           # Supporting any kind of method, without arguments, with positional
           # or with named parameters. Or any combination of them.
           result = if args.empty? && kwargs.empty?
-                     send(original_method_name)
+                     super()
                    elsif args.empty?
-                     send(original_method_name, **kwargs)
+                     super(**kwargs)
                    elsif kwargs.empty?
                      if args.length == 1 && args[0].is_a?(Hash)
-                       send(original_method_name, **args[0])
+                       super(**args[0])
                      else
-                       send(original_method_name, *args)
+                       super(*args)
                      end
                    else
-                     send(original_method_name, *args, **kwargs)
+                     super(*args, **kwargs)
                    end
 
           # Run after hooks
