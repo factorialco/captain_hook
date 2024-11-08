@@ -80,6 +80,7 @@ module CaptainHook
 
     def method_excluded_by_all_hooks?(method)
       get_hooks(:before).all? { |hook| hook.exclude.include?(method) } &&
+        get_hooks(:around).all? { |hook| hook.exclude.include?(method) } &&
         get_hooks(:after).all? { |hook| hook.exclude.include?(method) }
     end
 
