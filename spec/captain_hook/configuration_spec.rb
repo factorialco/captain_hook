@@ -7,7 +7,7 @@ class DummyHook
   def call(klass, method, dto:); end
 end
 
-describe HookConfiguration do
+describe CaptainHook::Configuration do
   let(:hook) { DummyHook.new }
   let(:args) { {} }
   let(:kwargs) { {} }
@@ -17,7 +17,7 @@ describe HookConfiguration do
   let(:skip_when) { nil }
 
   subject do
-    HookConfiguration.new(
+    described_class.new(
       hook: hook,
       include: include,
       exclude: [excluded_method],

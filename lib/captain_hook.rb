@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "./hook_configuration"
+require_relative "./captain_hook/configuration"
 
 # Strong inspiration on https://github.com/collectiveidea/interactor/blob/master/lib/interactor/hooks.rb
 #
@@ -30,7 +30,7 @@ module CaptainHook
       skip_when: nil,
       param_builder: nil
     )
-      hooks[kind][hook] = HookConfiguration.new(
+      hooks[kind][hook] = Configuration.new(
         hook: hook,
         include: include,
         inject: inject,
