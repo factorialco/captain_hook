@@ -160,6 +160,7 @@ describe CaptainHook do
       subject.foo(dto: "fooing")
 
       expect_any_instance_of(BeforeAllHook).to receive(:call).once
+
       expect(subject.prepare(dto: "foo")).to eq("child foo")
     end
   end
