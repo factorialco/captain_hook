@@ -44,17 +44,19 @@ module CaptainHook
     # Hooks logic part
     ####
     def get_hooks(kind)
-      # Only get hooks from the most specific class that defines them
-      return hooks[kind].values if hooks[kind].any?
+      hook_list = Hash.new { |h, k| h[k] = [] }
 
-      # If no hooks defined in this class, look up the inheritance chain
-      ancestors[1..].each do |ancestor|
-        next unless ancestor.respond_to?(:hooks)
-        return ancestor.hooks[kind].values if ancestor.hooks[kind].any?
+      # Collect hooks from the current class and ancestor classes
+      [self, *ancestors[1..]].each do |klass|
+        next unless klass.respond_to?(:hooks)
+
+        (klass.hooks[kind] || {}).each_value do |hook|
+          hook_list[hook.hook.class] << hook
+        end
       end
 
-      # If no hooks found anywhere in the chain, return empty array
-      []
+      # Return an array containing the first element of each key in hook_list
+      hook_list.values.map(&:first)
     end
 
     def hooks
