@@ -44,19 +44,13 @@ module CaptainHook
     # Hooks logic part
     ####
     def get_hooks(kind)
-      hook_list = Hash.new { |h, k| h[k] = [] }
-
-      # Collect hooks from the current class and ancestor classes
-      [self, *ancestors[1..]].each do |klass|
+      ancestors.each_with_object({}) do |klass, hook_list|
         next unless klass.respond_to?(:hooks)
 
-        (klass.hooks[kind] || {}).each_value do |hook|
-          hook_list[hook.hook.class] << hook
+        klass.hooks[kind]&.each_value do |hook|
+          hook_list[hook.hook.class] ||= hook
         end
-      end
-
-      # Return an array containing the first element of each key in hook_list
-      hook_list.values.map(&:first)
+      end.values
     end
 
     def hooks
