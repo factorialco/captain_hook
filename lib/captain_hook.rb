@@ -44,17 +44,13 @@ module CaptainHook
     # Hooks logic part
     ####
     def get_hooks(kind)
-      # Only get hooks from the most specific class that defines them
-      return hooks[kind].values if hooks[kind].any?
+      ancestors.each_with_object({}) do |klass, hook_list|
+        next unless klass.respond_to?(:hooks)
 
-      # If no hooks defined in this class, look up the inheritance chain
-      ancestors[1..].each do |ancestor|
-        next unless ancestor.respond_to?(:hooks)
-        return ancestor.hooks[kind].values if ancestor.hooks[kind].any?
-      end
-
-      # If no hooks found anywhere in the chain, return empty array
-      []
+        klass.hooks[kind]&.each_value do |hook|
+          hook_list[hook.hook.class] ||= hook
+        end
+      end.values
     end
 
     def hooks
@@ -70,7 +66,8 @@ module CaptainHook
 
     def method_excluded_by_all_hooks?(method)
       get_hooks(:before).all? { |hook| hook.exclude.include?(method) } &&
-        get_hooks(:after).all? { |hook| hook.exclude.include?(method) }
+        get_hooks(:after).all? { |hook| hook.exclude.include?(method) } &&
+        get_hooks(:around).all? { |hook| hook.exclude.include?(method) }
     end
 
     def method_added(method_name)

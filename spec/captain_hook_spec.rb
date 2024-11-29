@@ -64,12 +64,9 @@ class ResourceWithHooks
 
          [args, {}]
        }
-  hook :around,
-       include: %i[prepare],
-       hook: ServeHook.new
 
   hook :around,
-       include: %i[serve foo],
+       include: %i[serve foo prepare],
        hook: ServeHook.new,
        skip_when: SkipWhenProc
 
@@ -97,6 +94,8 @@ class ResourceWithHooks
 end
 
 class ResourceChildWithHooks < ResourceWithHooks
+  hook :before, include: [:deliver], hook: ErroringHook.new
+
   def foo(dto:); end
 
   def prepare(dto:)
@@ -124,7 +123,6 @@ describe CaptainHook do
       expect_any_instance_of(PrepareHook).to receive(:call).once.and_call_original
       expect_any_instance_of(BeforeAllHook).to receive(:call).once.and_call_original
       expect_any_instance_of(ManyParametersHook).to receive(:call).once.and_call_original
-      expect_any_instance_of(ServeHook).to receive(:call).once.and_call_original
 
       expect(subject.prepare(dto: "bar")).to eq("preparing bar")
     end
